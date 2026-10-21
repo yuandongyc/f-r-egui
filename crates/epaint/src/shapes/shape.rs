@@ -320,6 +320,66 @@ impl Shape {
         Self::Rect(RectShape::stroke(rect, corner_radius, stroke, stroke_kind))
     }
 
+    /// A rectangle with a hole in the center (like a crop region or frame).
+    ///
+    /// This is a convenience function that directly generates a [`Mesh`] at compile time.
+    /// The outer area is filled with `fill_color`, while the inner rectangle is transparent.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use egui::{Color32, Pos2, Stroke, Vec2};
+    ///
+    /// let outer = egui::Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(100.0, 100.0));
+    /// let inner = egui::Rect::from_center_size(Pos2::new(50.0, 50.0), Vec2::new(60.0, 60.0));
+    /// let shape = egui::Shape::hollow_rect(
+    ///     outer,
+    ///     inner,
+    ///     0.0,
+    ///     Color32::from_black_alpha(128),
+    ///     Stroke::NONE,
+    ///     Stroke::NONE,
+    /// );
+    /// painter.add(shape);
+    /// ```
+    #[inline]
+    pub fn hollow_rect(
+        outer_rect: Rect,
+        inner_rect: Rect,
+        _corner_radius: impl Into<CornerRadius>,
+        fill_color: impl Into<Color32>,
+        _stroke: impl Into<Stroke>,
+        _inner_stroke: impl Into<Stroke>,
+    ) -> Self {
+        let fill = fill_color.into();
+        let mut mesh = Mesh::default();
+
+        let top = Rect::from_min_max(outer_rect.min, pos2(outer_rect.max.x, inner_rect.min.y));
+        let bottom = Rect::from_min_max(pos2(outer_rect.min.x, inner_rect.max.y), outer_rect.max);
+        let left = Rect::from_min_max(
+            pos2(outer_rect.min.x, inner_rect.min.y),
+            pos2(inner_rect.min.x, inner_rect.max.y),
+        );
+        let right = Rect::from_min_max(
+            pos2(inner_rect.max.x, inner_rect.min.y),
+            pos2(outer_rect.max.x, inner_rect.max.y),
+        );
+
+        if top.area() > 0.0 {
+            mesh.add_colored_rect(top, fill);
+        }
+        if bottom.area() > 0.0 {
+            mesh.add_colored_rect(bottom, fill);
+        }
+        if left.area() > 0.0 {
+            mesh.add_colored_rect(left, fill);
+        }
+        if right.area() > 0.0 {
+            mesh.add_colored_rect(right, fill);
+        }
+
+        Self::from(mesh)
+    }
+
     /// Paints a gradient rectangle that transitions from `color_from` to `color_to`
     /// along the given `direction`.
     ///
@@ -600,4 +660,78 @@ fn dashes_from_line(
 
         position_on_segment -= segment_length;
     }
+}
+
+#[test]
+fn test_hollow_rect_vertices() {
+    use crate::*;
+
+    let outer = Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 100.0));
+    let inner = Rect::from_min_max(pos2(30.0, 30.0), pos2(70.0, 70.0));
+
+    let shape = Shape::hollow_rect(outer, inner, 0.0, Color32::RED, Stroke::NONE, Stroke::NONE);
+
+    let Shape::Mesh(mesh) = shape else {
+        panic!("Expected Mesh shape");
+    };
+
+    assert_eq!(
+        mesh.vertices.len(),
+        16,
+        "Should have 16 vertices (4 rectangles × 4 vertices)"
+    );
+    assert_eq!(
+        mesh.indices.len(),
+        24,
+        "Should have 24 indices (4 rectangles × 6 indices)"
+    );
+
+    let expected_outer_corners = [
+        pos2(0.0, 0.0),     // outer left-top
+        pos2(100.0, 0.0),   // outer right-top
+        pos2(100.0, 100.0), // outer right-bottom
+        pos2(0.0, 100.0),   // outer left-bottom
+    ];
+
+    let expected_inner_corners = [
+        pos2(30.0, 30.0), // inner left-top
+        pos2(70.0, 30.0), // inner right-top
+        pos2(70.0, 70.0), // inner right-bottom
+        pos2(30.0, 70.0), // inner left-bottom
+    ];
+
+    let all_positions: Vec<_> = mesh.vertices.iter().map(|v| v.pos).collect();
+
+    for corner in &expected_outer_corners {
+        assert!(
+            all_positions.contains(corner),
+            "Missing outer corner {:?}",
+            corner
+        );
+    }
+
+    for corner in &expected_inner_corners {
+        assert!(
+            all_positions.contains(corner),
+            "Missing inner corner {:?}",
+            corner
+        );
+    }
+
+    for vertex in &mesh.vertices {
+        assert_eq!(vertex.color, Color32::RED, "All vertices should be RED");
+    }
+}
+
+#[test]
+fn test_hollow_rect_visual_bounds() {
+    use crate::*;
+
+    let outer = Rect::from_min_max(pos2(10.0, 20.0), pos2(110.0, 120.0));
+    let inner = Rect::from_min_max(pos2(40.0, 50.0), pos2(80.0, 90.0));
+
+    let shape = Shape::hollow_rect(outer, inner, 0.0, Color32::BLUE, Stroke::NONE, Stroke::NONE);
+
+    let bounds = shape.visual_bounding_rect();
+    assert_eq!(bounds, outer, "Visual bounds should match outer rectangle");
 }
