@@ -11,3 +11,4 @@
 /.vscode
 /media/*
 .idea/
+**/examples/hollow_rect/examples
