@@ -4118,6 +4118,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
+name = "rendering_test_sim"
+version = "0.37.0"
+dependencies = [
+ "eframe",
+ "egui_demo_lib",
+ "env_logger",
+]
+
+[[package]]
+name = "rendering_test_sim2"
+version = "0.37.0"
+dependencies = [
+ "egui_demo_lib",
+ "egui_kittest",
+ "env_logger",
+]
+
+[[package]]
 name = "resvg"
 version = "0.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

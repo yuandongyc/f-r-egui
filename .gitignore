@@ -12,3 +12,5 @@
 /media/*
 .idea/
 **/examples/hollow_rect/examples
+**/examples/rendering_test_sim/*
+**/examples/rendering_test_sim2/*
