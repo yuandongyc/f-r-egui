@@ -29,3 +29,7 @@ $env:WGPU_BACKEND="vulkan"; cargo test -p rendering_test_sim2 --test tests --all
 6. cargo clippy && cargo test     # 你自己跑，或让 Agent 跑完再提交
 7. /code-review                   # 按仓库规范+PRD 做双轴评审
 8. 每周一次 /improve-codebase-architecture
+
+
+cargo test -p basic_rust_learn  --features s3
+
